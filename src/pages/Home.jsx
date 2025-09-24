@@ -14,12 +14,9 @@ const Home = () => {
     <Testimonial/>
     <Plans/>
     <Footer/>
-
     </>
   )
-    
-    
-   
+  
 };
 
 export default Home;

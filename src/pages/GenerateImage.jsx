@@ -1,5 +1,11 @@
 import React, { useState } from "react"
 import { Sparkles, Image } from "lucide-react"
+import { useAuth } from "@clerk/clerk-react"
+import axios from "axios";
+import { toast } from "react-hot-toast"
+
+// Set base URL from .env
+axios.defaults.baseURL = import.meta.env.VITE_BASE_URL;
 
 const GenerateImage = () => {
   const stylelength = [
@@ -14,12 +20,56 @@ const GenerateImage = () => {
   const [input, setInput] = useState("")
   const [publish, setPublish] = useState(false)
   const [generatedImg, setGeneratedImg] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const { getToken } = useAuth()
 
   const onsubmitHandler = async (e) => {
     e.preventDefault()
+    
+    if (!input.trim()) {
+      toast.error("Please enter a description for your image")
+      return
+    }
+    
+    setLoading(true)
 
-    // Placeholder: replace this with your API call later
-    setGeneratedImg("https://picsum.photos/400/300")
+    try {
+      const prompt = `${input} in ${selectedCategory.text} style`
+      console.log("🎨 Generating image with prompt:", prompt)
+
+      const { data } = await axios.post(
+        "/api/ai/image",
+        { prompt, publish },
+        { headers: { Authorization: `Bearer ${await getToken()}` } }
+      )
+
+      console.log("📡 API Response:", data)
+
+      if (data.success) {
+        setGeneratedImg(data.content)
+        toast.success("Image generated successfully!")
+      } else {
+        console.error("API Error:", data.message)
+        toast.error(data.message || "Failed to generate image")
+      }
+    } catch (err) {
+      console.error("Error generating image:", err)
+      
+      if (err.response) {
+        console.error("Response status:", err.response.status)
+        console.error("Response data:", err.response.data)
+        
+        const errorMessage = err.response.data?.message || 
+                           `Server error (${err.response.status}). Please try again.`
+        toast.error(errorMessage)
+      } else if (err.request) {
+        toast.error("Network error. Please check your connection and try again.")
+      } else {
+        toast.error("Something went wrong. Please try again.")
+      }
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -84,12 +134,14 @@ const GenerateImage = () => {
         {/* Button */}
         <button
           type="submit"
+          disabled={loading}
           className="w-full flex justify-center items-center gap-2 
              bg-gradient-to-r from-[#00AD25] to-[#04FF50] 
-             text-white px-4 py-2 mt-6 text-sm rounded-lg cursor-pointer"
+             text-white px-4 py-2 mt-6 text-sm rounded-lg cursor-pointer
+             disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Image className="w-5" />
-          Generate Image
+          {loading ? "Generating..." : "Generate Image"}
         </button>
       </form>
 
